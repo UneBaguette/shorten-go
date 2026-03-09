@@ -4,8 +4,8 @@ A fast, minimal URL shortener written in **Go**.
 
 ## Stack
 
-- **[Fiber](https://gofiber.io/)** — HTTP framework
-- **[BadgerDB](https://github.com/dgraph-io/badger)** — embedded key/value store (no external DB needed)
+- **[Fiber](https://gofiber.io/)** HTTP framework
+- **[BadgerDB](https://github.com/dgraph-io/badger)** embedded key/value store (no external DB **needed**)
 
 ## Project Structure
 
@@ -17,6 +17,8 @@ shorten-go/
 ├── internal/
 │   ├── handler/
 │   │   └── handler.go    # HTTP handlers
+│   ├── middleware/
+│   │   └── auth.go       # API key middleware
 │   ├── store/
 │   │   └── store.go      # BadgerDB logic
 │   └── model/
@@ -33,7 +35,7 @@ shorten-go/
 |--------|-------|-------------|
 | `POST` | `/shorten` | Create a short URL |
 | `GET` | `/:code` | Redirect to original URL |
-| `DELETE` | `/:code` | Delete a short URL |
+| `DELETE` | `/:code` | Delete a short URL (API key required) |
 
 ### POST /shorten
 
@@ -51,6 +53,19 @@ shorten-go/
   "code": "abc123"
 }
 ```
+
+### DELETE /:code
+
+**Headers:**
+```
+X-API-Key: your-api-key
+```
+
+## Security
+
+- **Rate limiting**: 10 requests/minute per **IP** on `POST /shorten`
+- **URL validation**: only `http://` and `https://` accepted
+- **API key**: required for `DELETE /:code`
 
 ## Getting Started
 
@@ -76,6 +91,7 @@ cp .env.example .env
 PORT=3000
 BASE_URL=https://example.com
 DB_PATH=./data/badger
+API_KEY=your-api-key
 ```
 
 ### Run
