@@ -27,9 +27,22 @@ func main() {
 
 	// Required environment variables
 	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = "3000"
+	}
+
 	baseURL := os.Getenv("BASE_URL")
+
+	if baseURL == "" {
+		log.Fatal("BASE_URL is required")
+	}
+
 	dbPath := os.Getenv("DB_PATH")
-	// apiKey := os.Getenv("API_KEY")
+
+	if dbPath == "" {
+		dbPath = "./data/badger"
+	}
 
 	allowedOrigins := make(map[string]struct{})
 	rawOrigins := os.Getenv("ALLOWED_ORIGINS")
@@ -77,12 +90,6 @@ func main() {
 	}))
 
 	app.Use(setupCORS())
-
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"https://example.com", "https://www.example.com"},
-		AllowMethods: []string{"GET", "POST", "DELETE"},
-		AllowHeaders: []string{"Content-Type", "X-API-Key"},
-	}))
 
 	// Rate limiters
 	burstLimiter := limiter.New(limiter.Config{
