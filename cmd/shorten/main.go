@@ -25,10 +25,11 @@ func main() {
 		log.Println("No .env file, using system env")
 	}
 
+	// Required environment variables
 	port := os.Getenv("PORT")
 	baseURL := os.Getenv("BASE_URL")
 	dbPath := os.Getenv("DB_PATH")
-	apiKey := os.Getenv("API_KEY")
+	// apiKey := os.Getenv("API_KEY")
 
 	allowedOrigins := make(map[string]struct{})
 	rawOrigins := os.Getenv("ALLOWED_ORIGINS")
@@ -75,19 +76,43 @@ func main() {
 		Stream: io.MultiWriter(os.Stdout, logFile),
 	}))
 
+	app.Use(setupCORS())
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"https://example.com", "https://www.example.com"},
 		AllowMethods: []string{"GET", "POST", "DELETE"},
 		AllowHeaders: []string{"Content-Type", "X-API-Key"},
 	}))
 
-	// Route definitions
-	app.Post("/shorten", limiter.New(limiter.Config{
+	// Rate limiters
+	burstLimiter := limiter.New(limiter.Config{
 		Max:        5,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return c.IP()
+		},
+	})
+
+	hourLimiter := limiter.New(limiter.Config{
+		Max:        15,
 		Expiration: 1 * time.Hour,
-	}), middleware.Blacklist, h.Shorten)
+		KeyGenerator: func(c fiber.Ctx) string {
+			return c.IP()
+		},
+	})
+
+	// Route definitions
+	app.Post("/shorten", burstLimiter, hourLimiter, middleware.Blacklist, h.Shorten)
 	app.Get("/:code", h.Redirect)
-	app.Delete("/:code", middleware.ApiKey(apiKey), h.Delete)
+	app.Delete("/:code", middleware.DeleteToken, h.Delete)
 
 	log.Fatal(app.Listen(":" + port))
+}
+
+func setupCORS() fiber.Handler {
+	return cors.New(cors.Config{
+		AllowOrigins: strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+		AllowMethods: []string{"GET", "POST", "DELETE"},
+		AllowHeaders: []string{"Content-Type", "X-API-Key", "X-Delete-Token"},
+	})
 }

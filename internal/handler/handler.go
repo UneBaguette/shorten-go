@@ -24,13 +24,15 @@ func New(store *store.Store, baseURL string, ttl time.Duration, allowedOrigins m
 
 func (h *Handler) Shorten(c fiber.Ctx) error {
 
-	origin := c.Get("Origin")
-
-	if _, ok := h.allowedOrigins[origin]; !ok {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "forbidden",
-		})
+	if c.Method() != "OPTIONS" {
+		origin := c.Get("Origin")
+		if _, ok := h.allowedOrigins[origin]; !ok {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "forbidden",
+			})
+		}
 	}
+
 	req := new(model.ShortenRequest)
 
 	if err := c.Bind().JSON(req); err != nil {
@@ -60,21 +62,54 @@ func (h *Handler) Shorten(c fiber.Ctx) error {
 	}
 
 	code := h.store.GenerateCode()
+	token := store.GenerateToken()
 
 	url := &model.URL{
-		Code:     code,
-		Original: req.URL,
+		Code:        code,
+		Original:    req.URL,
+		CreatedAt:   time.Now(),
+		IP:          c.IP(),
+		DeleteToken: token,
 	}
 
 	if err := h.store.Set(url, h.ttl); err != nil {
+		if err.Error() == "limit_reached" {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "limit_reached",
+			})
+		}
+
+		if err.Error() == "daily_limit_reached" {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "daily_limit_reached",
+			})
+		}
+
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "could not save url",
 		})
 	}
 
+	activeLinks, err := h.store.CountByIP(c.IP())
+
+	if err != nil {
+		activeLinks = 0
+	}
+
+	dailyCreations, err := h.store.GetCreations(c.IP())
+
+	if err != nil {
+		dailyCreations = 0
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(model.ShortenResponse{
-		Short: h.baseURL + "/" + code,
-		Code:  code,
+		Short:          h.baseURL + "/" + code,
+		Code:           code,
+		DeleteToken:    token,
+		ActiveLinks:    activeLinks,
+		DailyCreations: dailyCreations,
+		MaxLinks:       store.MaxLinksPerIP,
+		MaxDaily:       store.MaxCreationsPerDay,
 	})
 }
 
@@ -100,8 +135,23 @@ func (h *Handler) Redirect(c fiber.Ctx) error {
 
 func (h *Handler) Delete(c fiber.Ctx) error {
 	code := c.Params("code")
+	token := c.Get("X-Delete-Token")
 
-	if err := h.store.Delete(code); err != nil {
+	url, err := h.store.Get(code)
+
+	if err != nil || url == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "url not found",
+		})
+	}
+
+	if url.DeleteToken != token {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "unauthorized",
+		})
+	}
+
+	if err := h.store.Delete(code, url.IP); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "could not delete url",
 		})
