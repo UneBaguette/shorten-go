@@ -133,6 +133,17 @@ func (h *Handler) Redirect(c fiber.Ctx) error {
 	return c.Redirect().To(url.Original)
 }
 
+func (h *Handler) Check(c fiber.Ctx) error {
+	code := c.Params("code")
+	_, err := h.store.Get(code)
+
+	if err != nil {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
 func (h *Handler) Delete(c fiber.Ctx) error {
 	code := c.Params("code")
 	token := c.Get("X-Delete-Token")

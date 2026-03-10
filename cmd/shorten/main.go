@@ -111,6 +111,7 @@ func main() {
 	// Route definitions
 	app.Post("/shorten", burstLimiter, hourLimiter, middleware.Blacklist, h.Shorten)
 	app.Get("/:code", h.Redirect)
+	app.Head("/:code", h.Check)
 	app.Delete("/:code", middleware.DeleteToken, h.Delete)
 
 	log.Fatal(app.Listen(":" + port))
