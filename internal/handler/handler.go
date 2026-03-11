@@ -135,9 +135,9 @@ func (h *Handler) Redirect(c fiber.Ctx) error {
 
 func (h *Handler) Check(c fiber.Ctx) error {
 	code := c.Params("code")
-	_, err := h.store.Get(code)
+	url, err := h.store.Get(code)
 
-	if err != nil {
+	if err != nil || url == nil {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 
