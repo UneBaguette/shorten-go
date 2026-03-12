@@ -98,7 +98,11 @@ func main() {
 		Max:        5,
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c fiber.Ctx) string {
-			return c.IP()
+			ip := c.Get("X-Real-IP")
+			if ip == "" {
+				ip = c.IP()
+			}
+			return ip
 		},
 	})
 
@@ -106,7 +110,11 @@ func main() {
 		Max:        15,
 		Expiration: 1 * time.Hour,
 		KeyGenerator: func(c fiber.Ctx) string {
-			return c.IP()
+			ip := c.Get("X-Real-IP")
+			if ip == "" {
+				ip = c.IP()
+			}
+			return ip
 		},
 	})
 
