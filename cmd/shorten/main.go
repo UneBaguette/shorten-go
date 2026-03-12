@@ -89,15 +89,15 @@ func main() {
 	app.Use(logger.New(logger.Config{
 		Format: "[${time}] ${ip} ${method} ${path} ${status} ${latency}\n",
 		Stream: io.MultiWriter(os.Stdout, logFile),
-    CustomTags: map[string]logger.LogFunc{
-        "ip": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
-            ip := c.Get("X-Real-IP")
-            if ip == "" {
-                ip = c.IP()
-            }
-            return output.WriteString(ip)
-        },
-    },
+		CustomTags: map[string]logger.LogFunc{
+			"ip": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
+				ip := c.Get("X-Real-IP")
+				if ip == "" {
+					ip = c.IP()
+				}
+				return output.WriteString(ip)
+			},
+		},
 	}))
 
 	app.Use(setupCORS())
