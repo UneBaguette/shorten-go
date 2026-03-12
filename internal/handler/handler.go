@@ -133,7 +133,7 @@ func (h *Handler) Redirect(c fiber.Ctx) error {
 		})
 	}
 
-	return c.Redirect().To(url.Original)
+	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(url.Original)
 }
 
 func (h *Handler) Check(c fiber.Ctx) error {
