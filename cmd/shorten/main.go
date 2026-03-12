@@ -71,7 +71,9 @@ func main() {
 
 	h := handler.New(s, baseURL, time.Duration(ttl)*time.Hour, allowedOrigins)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ProxyHeader: "X-Real-IP",
+	})
 
 	os.MkdirAll("./logs", 0755)
 
