@@ -11,6 +11,7 @@ import (
 	"github.com/UneBaguette/shorten-go/internal/handler"
 	"github.com/UneBaguette/shorten-go/internal/middleware"
 	"github.com/UneBaguette/shorten-go/internal/store"
+  "github.com/UneBaguette/shorten-go/internal/httpx"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
@@ -75,7 +76,9 @@ func main() {
 		ProxyHeader: "X-Real-IP",
 	})
 
-	os.MkdirAll("./logs", 0755)
+  if err := os.MkdirAll("./logs", 0755); err != nil {
+      log.Fatal(err)
+  }
 
 	logFile, err := os.OpenFile("./logs/app.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 
@@ -89,15 +92,11 @@ func main() {
 	app.Use(logger.New(logger.Config{
 		Format: "[${time}] ${ip} ${method} ${path} ${status} ${latency}\n",
 		Stream: io.MultiWriter(os.Stdout, logFile),
-		CustomTags: map[string]logger.LogFunc{
-			"ip": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
-				ip := c.Get("X-Real-IP")
-				if ip == "" {
-					ip = c.IP()
-				}
-				return output.WriteString(ip)
-			},
-		},
+    CustomTags: map[string]logger.LogFunc{
+        "ip": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
+            return output.WriteString(httpx.ClientIP(c))
+        },
+    },
 	}))
 
 	app.Use(setupCORS())
@@ -106,29 +105,13 @@ func main() {
 	burstLimiter := limiter.New(limiter.Config{
 		Max:        5,
 		Expiration: 1 * time.Minute,
-		KeyGenerator: func(c fiber.Ctx) string {
-			ip := c.Get("X-Real-IP")
-			if ip == "" {
-				ip = c.IP()
-			}
-			return ip
-		},
-	})
-
-	hourLimiter := limiter.New(limiter.Config{
-		Max:        15,
-		Expiration: 1 * time.Hour,
-		KeyGenerator: func(c fiber.Ctx) string {
-			ip := c.Get("X-Real-IP")
-			if ip == "" {
-				ip = c.IP()
-			}
-			return ip
-		},
+    KeyGenerator: func(c fiber.Ctx) string {
+        return httpx.ClientIP(c)
+    },
 	})
 
 	// Route definitions
-	app.Post("/shorten", burstLimiter, hourLimiter, middleware.Blacklist, h.Shorten)
+	app.Post("/shorten", burstLimiter, middleware.Blacklist, h.Shorten)
 	app.Get("/:code", h.Redirect)
 	app.Head("/:code", h.Check)
 	app.Delete("/:code", middleware.DeleteToken, h.Delete)
@@ -139,7 +122,7 @@ func main() {
 func setupCORS() fiber.Handler {
 	return cors.New(cors.Config{
 		AllowOrigins: strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
-		AllowMethods: []string{"GET", "POST", "DELETE"},
+		AllowMethods: []string{"GET", "POST", "DELETE", "HEAD"},
 		AllowHeaders: []string{"Content-Type", "X-API-Key", "X-Delete-Token", "X-Real-IP"},
 	})
 }

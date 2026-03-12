@@ -7,6 +7,7 @@ import (
 
 	"github.com/UneBaguette/shorten-go/internal/model"
 	"github.com/UneBaguette/shorten-go/internal/store"
+  "github.com/UneBaguette/shorten-go/internal/httpx"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -60,19 +61,21 @@ func (h *Handler) Shorten(c fiber.Ctx) error {
 			"error": "url must start with http:// or https://",
 		})
 	}
+ 
+  ip := httpx.ClientIP(c)
 
 	code := h.store.GenerateCode()
 	token := store.GenerateToken()
 
-	url := &model.URL{
+	shortURL := &model.URL{
 		Code:        code,
 		Original:    req.URL,
 		CreatedAt:   time.Now(),
-		IP:          c.IP(),
+		IP:          ip,
 		DeleteToken: token,
 	}
 
-	if err := h.store.Set(url, h.ttl); err != nil {
+	if err := h.store.Set(shortURL, h.ttl); err != nil {
 		if err.Error() == "limit_reached" {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
 				"error": "limit_reached",
@@ -90,13 +93,13 @@ func (h *Handler) Shorten(c fiber.Ctx) error {
 		})
 	}
 
-	activeLinks, err := h.store.CountByIP(c.IP())
+	activeLinks, err := h.store.CountByIP(ip)
 
 	if err != nil {
 		activeLinks = 0
 	}
 
-	dailyCreations, err := h.store.GetCreations(c.IP())
+	dailyCreations, err := h.store.GetCreations(ip)
 
 	if err != nil {
 		dailyCreations = 0

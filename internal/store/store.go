@@ -51,7 +51,7 @@ func (s *Store) Set(url *model.URL, ttl time.Duration) error {
 		return err
 	}
 
-	if creations > MaxCreationsPerDay {
+	if creations >= MaxCreationsPerDay {
 		return fmt.Errorf("daily_limit_reached")
 	}
 
