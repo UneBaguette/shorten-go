@@ -124,7 +124,7 @@ func main() {
 	app.Head("/:code", h.Check)
 	app.Delete("/:code", middleware.DeleteToken, h.Delete)
 
-	log.Fatal(app.Listen(":" + port))
+	log.Fatal(app.Listen("127.0.0.1:" + port))
 }
 
 func setupCORS() fiber.Handler {
