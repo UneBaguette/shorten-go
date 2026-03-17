@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/UneBaguette/shorten-go/internal/handler"
+	"github.com/UneBaguette/shorten-go/internal/httpx"
 	"github.com/UneBaguette/shorten-go/internal/middleware"
 	"github.com/UneBaguette/shorten-go/internal/store"
-  "github.com/UneBaguette/shorten-go/internal/httpx"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
@@ -76,9 +76,9 @@ func main() {
 		ProxyHeader: "X-Real-IP",
 	})
 
-  if err := os.MkdirAll("./logs", 0755); err != nil {
-      log.Fatal(err)
-  }
+	if err := os.MkdirAll("./logs", 0755); err != nil {
+		log.Fatal(err)
+	}
 
 	logFile, err := os.OpenFile("./logs/app.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 
@@ -92,11 +92,11 @@ func main() {
 	app.Use(logger.New(logger.Config{
 		Format: "[${time}] ${ip} ${method} ${path} ${status} ${latency}\n",
 		Stream: io.MultiWriter(os.Stdout, logFile),
-    CustomTags: map[string]logger.LogFunc{
-        "ip": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
-            return output.WriteString(httpx.ClientIP(c))
-        },
-    },
+		CustomTags: map[string]logger.LogFunc{
+			"ip": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
+				return output.WriteString(httpx.ClientIP(c))
+			},
+		},
 	}))
 
 	app.Use(setupCORS())
@@ -105,9 +105,9 @@ func main() {
 	burstLimiter := limiter.New(limiter.Config{
 		Max:        5,
 		Expiration: 1 * time.Minute,
-    KeyGenerator: func(c fiber.Ctx) string {
-        return httpx.ClientIP(c)
-    },
+		KeyGenerator: func(c fiber.Ctx) string {
+			return httpx.ClientIP(c)
+		},
 	})
 
 	// Route definitions

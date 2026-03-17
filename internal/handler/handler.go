@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/UneBaguette/shorten-go/internal/httpx"
 	"github.com/UneBaguette/shorten-go/internal/model"
 	"github.com/UneBaguette/shorten-go/internal/store"
-  "github.com/UneBaguette/shorten-go/internal/httpx"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -61,8 +61,8 @@ func (h *Handler) Shorten(c fiber.Ctx) error {
 			"error": "url must start with http:// or https://",
 		})
 	}
- 
-  ip := httpx.ClientIP(c)
+
+	ip := httpx.ClientIP(c)
 
 	code := h.store.GenerateCode()
 	token := store.GenerateToken()
